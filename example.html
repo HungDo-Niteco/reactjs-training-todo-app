@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Hello World</title>
+    <link href="./index.css" rel="stylesheet" />
+    <link href="./app.css" rel="stylesheet" />
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Don't use this in production: -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body>
+    <div class="todoapp" id="root"></div>
+    <script type="text/babel">
+
+        const { useState, useRef, useId, forwardRef, useCallback } = React;
+        const ITEM_STATUS = {
+            ACTIVE: 'ACTIVE',
+            COMPLETE: 'COMPLETE'
+        }
+
+        const Header = forwardRef((props, ref) => {
+            return <header className="header" dataTestid="header">
+                <h1>todo</h1>
+                <div className="input-container">
+                    <input className="new-todo" id="todo-input" type="text" dataTestid="text-input" placeholder="What needs to be done?" onKeyDown={props.onPushItem} ref={ref} />
+                    <label className="visually-hidden" htmlFor="todo-input">New Todo Input</label>
+                </div>
+            </header>
+        });
+
+        const MyApp = () => {
+            const [list, setList] = useState([]);
+            const [listSelected, setListSelected] = useState([]);
+            const [filterItem, setFilterItem] = useState(null);
+            const inputRef = useRef(null);
+
+            const onPushItem = (e) => {
+                // Randomly ID
+                const id = Date.now() + Math.random().toString(36).substr(2, 9);
+
+                if (e.key !== "Enter" || !inputRef?.current?.value || inputRef?.current?.value.length < 2) {
+                    return;
+                }
+                // focus after onEnter
+                setList([...list, {id, name: inputRef?.current?.value, status: ITEM_STATUS.ACTIVE}]);
+                e.preventDefault();
+                inputRef.current.value = "";
+            }
+
+            const removeItem = (idx) => {
+                setList([...list.filter(i => i.id !== idx)]);
+            }
+
+            const setStateItems = (ids = [], status) => {
+                let listUpdated = [];
+
+                if (!ids.length || !status) {
+                    return;
+                }
+
+                if (!ids.length) {
+                    listUpdated = list.map(i => {
+                        return {
+                            ...i,
+                            status: status
+                        }
+                    });
+                }
+
+                listUpdated = list.map(item => {
+                    if (ids.includes(item.id)) {
+                        return {
+                            ...item,
+                            status
+                        }
+                    }
+
+                    return item;
+                });
+
+                setList(listUpdated);
+            }
+
+            const removeCompleteItems = useCallback(() => {
+                const listCompleteItems = list.filter(item => item.status === ITEM_STATUS.COMPLETE);
+                const restListItems = list.filter(item => item.status !== ITEM_STATUS.COMPLETE);
+
+                if (!listCompleteItems?.length) {
+                    return;
+                }
+
+                setList(restListItems);
+            }, [list, listSelected]);
+
+            const onSelectItem = (id) => {
+                if (list.filter(item => item.id === id && item.status === ITEM_STATUS.COMPLETE).length) {
+                    setStateItems([id], ITEM_STATUS.ACTIVE);
+                } else {
+                    setStateItems([id], ITEM_STATUS.COMPLETE);
+                }                
+            }
+
+            const onToggleItem = () => {
+                const hasActive = list.some(item => item.status == ITEM_STATUS.ACTIVE);
+                const listIds = list.map(item => item.id);
+                let newStatus = null;
+
+                if (filterItem === null) {
+                    if (hasActive) {
+                        setStateItems(listIds, ITEM_STATUS.COMPLETE);
+                    } else {
+                        setStateItems(listIds, ITEM_STATUS.ACTIVE);
+                    }
+                }
+                if (filterItem === ITEM_STATUS.ACTIVE) {
+                    setStateItems(listIds, ITEM_STATUS.COMPLETE);
+                }
+                if (filterItem === ITEM_STATUS.COMPLETE) {
+                    setStateItems(listIds, ITEM_STATUS.ACTIVE);
+                }
+            }
+
+            const ToggleList = () => {
+                return <div className="toggle-all-container">
+                    <input className="toggle-all" type="checkbox" dataTestid="toggle-all" onChange={onToggleItem} />
+                    <label className="toggle-all-label" htmlFor="toggle-all">Toggle All Input</label>
+                </div>
+            }
+
+            const TodoList = () => {
+                if (!list.length) {
+                    return;
+                }
+
+                return <ul className="todo-list">
+                    {
+                        list
+                            .filter((item) => (item.status == filterItem) || filterItem === null)
+                            .map(item => <li key={item.id} className={`${(item.status === ITEM_STATUS.COMPLETE) ? "completed" : ""}`}>
+                                <TodoItem item={item} />
+                            </li>)
+                    }
+                </ul>
+            }
+
+            const TodoItem = ({item}) => {
+                return <div className="view">
+                    <input className="toggle" type="checkbox" dataTestid="todo-item-toggle" checked={item.status === ITEM_STATUS.COMPLETE} onChange={() => onSelectItem(item.id)} />
+                    <label dataTestid="todo-item-label">{item.name}</label>
+                    <button className="destroy" dataTestid="todo-item-button" onClick={() => removeItem(item.id)}></button>
+                </div>
+            }
+
+            const MainContainer = () => {
+                return <main className="main">
+                    <ToggleList />
+                    <TodoList />
+                </main>
+            }
+
+            const Footer = () => {
+                if (!list?.length) {
+                    return;
+                }
+
+                return <>
+                    <footer className="footer" dataTestid="footer">
+                        <span className="todo-count">{list.filter(item => item.status === ITEM_STATUS.ACTIVE)?.length || 0} item(s) left!</span>
+                        <ul className="filters" dataTestid="footer-navigation">
+                            <li><a className={`${filterItem === null ? "selected" : ""}`} href="#/" onClick={() => setFilterItem(null)}>All</a></li>
+                            <li><a className={`${filterItem === ITEM_STATUS.ACTIVE ? "selected" : ""}`} href="#/active" onClick={() => setFilterItem(ITEM_STATUS.ACTIVE)}>Active</a></li>
+                            <li><a className={`${filterItem === ITEM_STATUS.COMPLETE ? "selected" : ""}`} href="#/completed" onClick={() => setFilterItem(ITEM_STATUS.COMPLETE)}>Completed</a></li>
+                        </ul>
+                        <button className="clear-completed" disabled={!list.filter(item => item.status === ITEM_STATUS.COMPLETE).length} onClick={removeCompleteItems}>Clear completed</button>
+                    </footer>
+                </>
+            }
+
+            return <>
+                <Header onPushItem={onPushItem} ref={inputRef} />
+                <MainContainer />
+                <Footer />
+            </>;
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<MyApp />);
+
+    </script>
+</body>
+
+</html>
