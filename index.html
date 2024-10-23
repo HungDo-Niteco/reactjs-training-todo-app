@@ -17,24 +17,44 @@
     <div class="todoapp" id="root"></div>
     <script type="text/babel">
 
-        const { useState, useRef, useId, forwardRef, useCallback } = React;
+        const { useState, useRef, useId, forwardRef, useCallback, useEffect } = React;
         const ITEM_STATUS = {
             ACTIVE: 'ACTIVE',
             COMPLETE: 'COMPLETE'
         }
+        const DATA_LOCALSTORAGE_KEY = "REACTJS_TRAINING_DATA";
 
         const Header = forwardRef((props, ref) => {
-            return <header className="header" dataTestid="header">
+            return <header className="header">
                 <h1>todo</h1>
                 <div className="input-container">
-                    <input className="new-todo" id="todo-input" type="text" dataTestid="text-input" placeholder="What needs to be done?" onKeyDown={props.onPushItem} ref={ref} />
+                    <input className="new-todo" id="todo-input" type="text" placeholder="What needs to be done?" onKeyDown={props.onPushItem} ref={ref} />
                     <label className="visually-hidden" htmlFor="todo-input">New Todo Input</label>
                 </div>
             </header>
         });
 
+        const updateLocalStorgare = (value) => {
+            if (!value) {
+                return;
+            }
+
+            localStorage.setItem(DATA_LOCALSTORAGE_KEY, JSON.stringify(value));
+        };
+
+        const getLocalStorage = () => {
+            let data = localStorage.getItem(DATA_LOCALSTORAGE_KEY);
+            if (data) {
+                data = JSON.parse(data);
+            } else {
+                data = [];
+            }
+
+            return data;
+        }
+
         const MyApp = () => {
-            const [list, setList] = useState([]);
+            const [list, setList] = useState(getLocalStorage());
             const [listSelected, setListSelected] = useState([]);
             const [filterItem, setFilterItem] = useState(null);
             const inputRef = useRef(null);
@@ -127,7 +147,7 @@
 
             const ToggleList = () => {
                 return <div className="toggle-all-container">
-                    <input className="toggle-all" type="checkbox" dataTestid="toggle-all" onChange={onToggleItem} />
+                    <input className="toggle-all" type="checkbox" onChange={onToggleItem} />
                     <label className="toggle-all-label" htmlFor="toggle-all">Toggle All Input</label>
                 </div>
             }
@@ -150,9 +170,9 @@
 
             const TodoItem = ({item}) => {
                 return <div className="view">
-                    <input className="toggle" type="checkbox" dataTestid="todo-item-toggle" checked={item.status === ITEM_STATUS.COMPLETE} onChange={() => onSelectItem(item.id)} />
-                    <label dataTestid="todo-item-label">{item.name}</label>
-                    <button className="destroy" dataTestid="todo-item-button" onClick={() => removeItem(item.id)}></button>
+                    <input className="toggle" type="checkbox" checked={item.status === ITEM_STATUS.COMPLETE} onChange={() => onSelectItem(item.id)} />
+                    <label>{item.name}</label>
+                    <button className="destroy" onClick={() => removeItem(item.id)}></button>
                 </div>
             }
 
@@ -169,9 +189,9 @@
                 }
 
                 return <>
-                    <footer className="footer" dataTestid="footer">
+                    <footer className="footer">
                         <span className="todo-count">{list.filter(item => item.status === ITEM_STATUS.ACTIVE)?.length || 0} item(s) left!</span>
-                        <ul className="filters" dataTestid="footer-navigation">
+                        <ul className="filters">
                             <li><a className={`${filterItem === null ? "selected" : ""}`} href="#/" onClick={() => setFilterItem(null)}>All</a></li>
                             <li><a className={`${filterItem === ITEM_STATUS.ACTIVE ? "selected" : ""}`} href="#/active" onClick={() => setFilterItem(ITEM_STATUS.ACTIVE)}>Active</a></li>
                             <li><a className={`${filterItem === ITEM_STATUS.COMPLETE ? "selected" : ""}`} href="#/completed" onClick={() => setFilterItem(ITEM_STATUS.COMPLETE)}>Completed</a></li>
@@ -180,6 +200,10 @@
                     </footer>
                 </>
             }
+
+            useEffect(() => {                
+                updateLocalStorgare(list);
+            }, [list]);
 
             return <>
                 <Header onPushItem={onPushItem} ref={inputRef} />
